@@ -23,6 +23,11 @@ class MapsViewController: UIViewController, MKMapViewDelegate, CLLocationManager
     var secilenIsim = ""
     var secilenId : UUID?
     
+    var annotationTitle = ""
+    var annotationSubtitle = ""
+    var annotationLatitude = Double()
+    var annotationLongitude = Double()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
@@ -40,6 +45,69 @@ class MapsViewController: UIViewController, MKMapViewDelegate, CLLocationManager
         
         if secilenIsim != ""{
             //Core Data'dan veri çekilecek
+            if let uuidString = secilenId?.uuidString{
+                
+                let appDelegate = UIApplication.shared.delegate as! AppDelegate
+                let context = appDelegate.persistentContainer.viewContext
+                
+                let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Yer")
+                fetchRequest.predicate = NSPredicate(format: "id = %@", uuidString)
+                fetchRequest.returnsObjectsAsFaults = false
+                
+                do {
+                    
+                    let sonuclar = try context.fetch(fetchRequest)
+                    
+                    if sonuclar.count > 0 {
+                        
+                        for sonuc in sonuclar as! [NSManagedObject]{
+                            
+                            if let isim = sonuc.value(forKey: "isim") as? String {
+                                annotationTitle = isim
+                                
+                                if let not = sonuc.value(forKey: "not") as? String {
+                                    annotationSubtitle = not
+                                    
+                                    if let latitude = sonuc.value(forKey: "latitude") as? Double {
+                                        annotationLatitude = latitude
+                                        
+                                        if let longitude = sonuc.value(forKey: "longitude") as? Double {
+                                            annotationLongitude = longitude
+                                            
+                                            let annotation = MKPointAnnotation()
+                                            annotation.title = annotationTitle
+                                            annotation.subtitle = annotationSubtitle
+                                            
+                                            let coordinate = CLLocationCoordinate2D(latitude: annotationLatitude, longitude: annotationLongitude)
+                                            annotation.coordinate = coordinate
+                                            
+                                            mapView.addAnnotation(annotation)
+                                            isimTextField.text = annotationTitle
+                                            notTextField.text = annotationSubtitle
+                                            
+                                            locationManager.stopUpdatingLocation()
+                                            
+                                            let span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                                            let region = MKCoordinateRegion(center: coordinate, span: span)
+                                            mapView.setRegion(region, animated: true)
+                                            
+                                        }
+                                        
+                                    }
+                                    
+                                }
+
+                            }
+          
+                        }
+                        
+                    }
+                    
+                } catch {
+                    print("HATA")
+                }
+                
+            }
         } else {
             //Yeni veri eklenecek
         }
@@ -66,13 +134,18 @@ class MapsViewController: UIViewController, MKMapViewDelegate, CLLocationManager
     
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        let location = CLLocationCoordinate2D(latitude: locations[0].coordinate.latitude, longitude: locations[0].coordinate.longitude)
         
-        let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        if secilenIsim == "" {
+            
+            let location = CLLocationCoordinate2D(latitude: locations[0].coordinate.latitude, longitude: locations[0].coordinate.longitude)
         
-        let region = MKCoordinateRegion(center: location, span: span)
+            let span = MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
         
-        mapView.setRegion(region, animated: true)
+            let region = MKCoordinateRegion(center: location, span: span)
+        
+            mapView.setRegion(region, animated: true)
+            
+        }
     }
     
     
