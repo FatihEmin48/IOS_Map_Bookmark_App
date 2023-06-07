@@ -28,7 +28,11 @@ class ListViewController: UIViewController, UITableViewDelegate, UITableViewData
         veriAl()
     }
     
-    func veriAl(){
+    override func viewWillAppear(_ animated: Bool) {
+        NotificationCenter.default.addObserver(self, selector: #selector(veriAl), name: NSNotification.Name("yeniYerOlusturuldu"), object: nil)
+    }
+    
+    @objc func veriAl(){
         let appDelegate = UIApplication.shared.delegate as! AppDelegate
         let context = appDelegate.persistentContainer.viewContext
         
@@ -95,6 +99,61 @@ class ListViewController: UIViewController, UITableViewDelegate, UITableViewData
             destinationVC.secilenIsim = secilenYerIsmi
             destinationVC.secilenId = secilenYerId
         }
+    }
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        
+        if editingStyle == .delete {
+            
+            let appDelegate = UIApplication.shared.delegate as! AppDelegate
+            let context = appDelegate.persistentContainer.viewContext
+            
+            let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Yer")
+            let uuidString = idDizisi[indexPath.row].uuidString
+            
+            fetchRequest.predicate = NSPredicate(format: "id = %@", uuidString)
+            fetchRequest.returnsObjectsAsFaults = false
+            
+            do {
+                
+                let sonuclar = try context.fetch(fetchRequest)
+                
+                if sonuclar.count > 0{
+                    
+                    for sonuc in sonuclar as! [NSManagedObject] {
+                        
+                        if let id = sonuc.value(forKey: "id") as? UUID{
+                            
+                            if id == idDizisi[indexPath.row] {
+                                
+                                context.delete(sonuc)
+                                isimDizisi.remove(at: indexPath.row)
+                                idDizisi.remove(at: indexPath.row)
+                                
+                                self.tableView.reloadData()
+                                
+                                do {
+                                    try context.save()
+                                } catch {
+                                    
+                                }
+                                
+                                break
+                                
+                            }
+                            
+                        }
+                        
+                    }
+                    
+                }
+                
+            } catch {
+                print("Hata")
+            }
+            
+        }
+        
     }
 
 }
